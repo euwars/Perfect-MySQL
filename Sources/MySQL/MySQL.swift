@@ -431,7 +431,7 @@ public final class MySQL {
 	public final class Results: IteratorProtocol {
 		var ptr: UnsafeMutablePointer<MYSQL_RES>?
 		
-		public typealias Element = [String?]
+		public typealias Element = [String: String?]
 		
 		init(_ ptr: UnsafeMutablePointer<MYSQL_RES>) {
 			self.ptr = ptr
@@ -464,6 +464,11 @@ public final class MySQL {
 		public func numFields() -> Int {
 			return Int(mysql_num_fields(self.ptr!))
 		}
+		public func fields() -> [String] {
+           		return Array(UnsafeBufferPointer(start: mysql_fetch_fields(self.ptr!), count: fields().count)).map { (field) -> String in
+                		return String(cString: field.name)
+           		}
+        	}
 		
         /// Fetches the next row from the result set
         ///     returning a String array of column names if row available
@@ -473,16 +478,16 @@ public final class MySQL {
 				return nil
 			}
 			
-			var ret = [String?]()
+			var ret = [String: String?]()
 			for fieldIdx in 0..<self.numFields() {
 				let length = lengths[fieldIdx]
 				let rowVal = row[fieldIdx]
 				let len = Int(length)
 				if let raw = rowVal {
 					let s = raw.withMemoryRebound(to: UInt8.self, capacity: len) { UTF8Encoding.encode(generator: GenerateFromPointer(from: $0, count: len)) }
-					ret.append(s)
+					ret[fields()[fieldIdx]] = s
                 } else {
-                    ret.append(nil)
+                    ret[fields()[fieldIdx]] = nil
                 }
 			}
 			return ret
